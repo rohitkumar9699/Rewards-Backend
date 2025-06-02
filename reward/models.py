@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils import timezone
+
 
 class RewardWallet(models.Model):
     wallet_username = models.CharField(max_length=100, unique=True)
@@ -10,16 +12,30 @@ class RewardWallet(models.Model):
         return self.wallet_username
 
 
-class RewardOrders(models.Model):
-    order_by = models.ForeignKey(RewardWallet, to_field='wallet_username', on_delete=models.CASCADE)
+
+class RewardCards(models.Model):
+    order_by = models.ForeignKey('RewardWallet', to_field='wallet_username', on_delete=models.CASCADE)
     product_name = models.CharField(max_length=100)
     product_id = models.CharField(max_length=50)
     final_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    order_date = models.DateTimeField()
-    status = models.CharField(max_length=50)
-    payment_status = models.BooleanField(default=False)
+    order_date = models.DateTimeField(default=timezone.now)
     category = models.CharField(max_length=100)
-    reward_rate = models.FloatField(default=0.00)
+    reward_rate = models.FloatField(default=0.00)  # Percentage or multiplier
+    reward_amount = models.FloatField(default=0.00)  # reward = final_amount * rate
+
+    is_active = models.BooleanField(default=False)
+    processed = models.BooleanField(default=False)
+
+    skrech_from  =  models.DateTimeField(default=timezone.now)
+    skrech_to =  models.DateTimeField(null= True, blank=True)
+
+    valid_from = models.DateTimeField(null=True, blank=True)
+    valid_to = models.DateTimeField(null=True, blank=True)
+
+    removed_date = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
 
     def __str__(self):
         return f"Reward #{self.id} - {self.product_name}"
