@@ -33,9 +33,6 @@ class CreateCardView(APIView):
             reward_rate = COIN_EXCHANGE_RATE
             reward_amount = final_amount * reward_rate
 
-            # 3. Compute date fields
-            scratch_from = timezone.now()
-            scratch_to = scratch_from + timedelta(days=7)
             # 4. Create Reward Card entry
             RewardCards.objects.create(
                 order_by=wallet,
@@ -47,9 +44,7 @@ class CreateCardView(APIView):
                 reward_rate=reward_rate,
                 reward_amount=reward_amount,
                 is_active=data.get('is_active', False),
-                processed=data.get('processed', False),
-                scratch_from=scratch_from,
-                scratch_to=scratch_to
+                processed=data.get('processed', False)
             )
 
             return Response({'message': 'Reward card created successfully.'}, status=status.HTTP_201_CREATED)

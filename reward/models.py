@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from datetime import timedelta
 
 
 class RewardWallet(models.Model):
@@ -38,4 +39,11 @@ class RewardCards(models.Model):
 
     def __str__(self):
         return f"Reward #{self.id} - {self.product_name}"
+    
+    def save(self, *args, **kwargs):
+        if self.reward_rate and self.final_amount:
+            self.reward_amount = self.final_amount * self.reward_rate
+            self.scratch_from = timezone.now()
+            self.scratch_to = self.scratch_from + timedelta(days=7)
+        super().save(*args, **kwargs)
 
