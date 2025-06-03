@@ -5,9 +5,13 @@ from django.utils import timezone
 from datetime import timedelta
 from .models import RewardWallet, RewardCards
 
+from decimal import Decimal
+
 class CreateCardView(APIView):
     def post(self, request):
         data = request.data
+
+        print(data)
 
         try:
             # 1. Get or create the wallet user
@@ -26,12 +30,8 @@ class CreateCardView(APIView):
             reward_amount = final_amount * reward_rate
 
             # 3. Compute date fields
-            skrech_from = timezone.now()
-            skrech_to = skrech_from + timedelta(days=7)
-            valid_from = skrech_to + timedelta(days=30)
-            valid_to = skrech_from + timedelta(days=30)
-            removed_date = valid_from + timedelta(days=10)
-
+            scratch_from = timezone.now()
+            scratch_to = scratch_from + timedelta(days=7)
             # 4. Create Reward Card entry
             RewardCards.objects.create(
                 order_by=wallet,
@@ -44,11 +44,8 @@ class CreateCardView(APIView):
                 reward_amount=reward_amount,
                 is_active=data.get('is_active', False),
                 processed=data.get('processed', False),
-                skrech_from=skrech_from,
-                skrech_to=skrech_to,
-                valid_from=valid_from,
-                valid_to=valid_to,
-                removed_date=removed_date
+                scratch_from=scratch_from,
+                scratch_to=scratch_to
             )
 
             return Response({'message': 'Reward card created successfully.'}, status=status.HTTP_201_CREATED)
@@ -61,72 +58,148 @@ class CreateCardView(APIView):
 
 
 
-
-
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.utils import timezone
-from decimal import Decimal
-from .models import RewardWallet, RewardCards
-
-class CreateReedomView(APIView):
+class CardScratchView(APIView):
     def post(self, request):
-        order_id = request.data.get('id')
-        username = request.data.get('username')
+        try:
+            card_id = request.data.get('id')
+            username = request.data.get('username')
 
-        if not order_id or not username:
-            return Response({"error": "Both 'id' and 'username' are required."}, status=status.HTTP_400_BAD_REQUEST)
+            if not card_id or not username:
+                return Response({"error": "Both 'id' and 'username' are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                card = RewardCards.objects.get(id=card_id, order_by__wallet_username=username)
+            except RewardCards.DoesNotExist:
+                return Response({"error": "Reward card not found for this user."}, status=status.HTTP_404_NOT_FOUND)
+
+            now = timezone.now()
+
+           
+            # Check if card has already been scratched
+            if card.scratch_status:
+                return Response({"error": "Card has already been scratched."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check scratch time window
+            if card.scratch_from and card.scratch_to:
+                if not (card.scratch_from <= now <= card.scratch_to):
+                    print(now)
+                    return Response({"error": "Current time is outside the scratch time window."}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({"error": "Scratch time window not defined."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Mark the card as scratched
+            card.scratch_status = True
+            card.is_active = True
+            card.valid_from = now 
+            card.valid_to = now + timedelta(days=30)
+
+            
+            try:
+                card.save()
+            except Exception as e:
+                return Response({"error": f"Failed to update card data: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            return Response({
+                "message": "Card scratched successfully.",
+                "card_id": card.id,
+                "product_name": card.product_name,
+                "reward_amount": str(card.reward_amount),
+                "scratch_time": now.isoformat()
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+class CardReedomView(APIView):
+    def post(self, request):
+        try:
+            card_id = request.data.get('id')
+            username = request.data.get('username')
+
+            if not card_id or not username:
+                return Response({"error": "Both 'id' and 'username' are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                card = RewardCards.objects.get(id=card_id, order_by__wallet_username=username)
+            except RewardCards.DoesNotExist:
+                return Response({"error": "Reward card not found for this user."}, status=status.HTTP_404_NOT_FOUND)
+
+            try:
+                wallet = RewardWallet.objects.get(wallet_username=username)
+            except RewardWallet.DoesNotExist:
+                return Response({"error": "Wallet not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            now = timezone.now()
+
+            # Status checks
+            if not card.is_active:
+                return Response({"error": "Reward card is not active."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if  card.processed:
+                return Response({"error": "Reward card has not been processed yet."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not card.scratch_status:
+                return Response({"error": "Card must be scratched before redemption."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if card.valid_from and card.valid_to:
+                if not (card.valid_from <= now <= card.valid_to):
+                    return Response({"error": "Reward card is not currently valid."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+            card.is_active= False
+            card.processed= True
+
+            try:
+                old_wallet_balance = wallet.wallet_balance or Decimal("0")
+                wallet.wallet_balance = old_wallet_balance + card.reward_amount
+                wallet.save()
+            except Exception as e:
+                return Response({"error": f"Failed to update wallet balance: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            return Response({
+                "wallet_username": wallet.wallet_username,
+                "old_wallet_balance": str(old_wallet_balance),
+                "reward_added": str(card.reward_amount),
+                "new_wallet_balance": str(wallet.wallet_balance),
+                "card_id": card_id,
+                "message": "Reward redeemed successfully."
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+import requests
+
+class ReedomCoinView(APIView):
+    def post(self, request):
+        wallet_username = request.data.get('wallet_username')
 
         try:
-            card = RewardCards.objects.get(id=order_id)
-        except RewardCards.DoesNotExist:
-            return Response({"error": "Reward card not found."}, status=status.HTTP_404_NOT_FOUND)
+            wallet = RewardWallet.objects.get(wallet_username=wallet_username)
+            wallet_balance = wallet.wallet_balance * 0.2 #   20%  exchange rate 
 
-        try:
-            wallet = RewardWallet.objects.get(wallet_username=username)
+            data = {
+                "wallet_username": wallet_username,
+                "wallet_balance": str(wallet_balance)  # Convert Decimal to string
+            }
+
+            try:
+                response = requests.post("http://localhost:8000/add-money-to-wallet/", json=data)
+                if response.status_code == 200:
+                    wallet.wallet_balance = 0
+                    wallet.save()
+
+                    return Response(response.json(), status=status.HTTP_200_OK)
+                else:
+                    return Response({"error": f"Wallet API returned status {response.status_code}", "body": response.text}, status=response.status_code)
+
+            except Exception as e:
+                return Response({"error": f"Failed to reach wallet API: {str(e)}"}, status=status.HTTP_502_BAD_GATEWAY)
+
         except RewardWallet.DoesNotExist:
             return Response({"error": "Wallet not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        now = timezone.now()
-
-        # Check if reward card is active and processed
-        if not card.is_active:
-            return Response({"error": "Reward card is not active."}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not card.processed:
-            return Response({"error": "Reward card has not been processed yet."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if current time is within scratch period
-        if not (card.skrech_from <= now <= card.skrech_to):
-            return Response({"error": "Current time is outside scratch period."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if current time is within validity period
-        if not (card.valid_from <= now <= card.valid_to):
-            return Response({"error": "Reward card is not currently valid."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if removed date has passed
-        if card.removed_date and now > card.removed_date:
-            return Response({"error": "Reward card has been removed and cannot be redeemed."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Calculate reward amount (use stored reward_amount if exists)
-        reward_amount = card.reward_amount if card.reward_amount else (card.final_amount * Decimal(str(card.reward_rate)))
-
-        # Ensure reward_amount is Decimal
-        if not isinstance(reward_amount, Decimal):
-            reward_amount = Decimal(str(reward_amount))
-
-        # Ensure wallet_balance is Decimal and add reward_amount
-        old_wallet_balance = wallet.wallet_balance
-        wallet.wallet_balance = (wallet.wallet_balance or Decimal('0')) + reward_amount
-        wallet.save()
-
-        return Response({
-            "wallet_username": wallet.wallet_username,
-            "old_wallet_balance": str(old_wallet_balance),
-            "reward_added": str(reward_amount),
-            "new_wallet_balance": str(wallet.wallet_balance),
-            "card_id": order_id,
-            "message": "Reward redeemed successfully."
-        }, status=status.HTTP_200_OK)

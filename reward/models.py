@@ -20,22 +20,22 @@ class RewardCards(models.Model):
     final_amount = models.DecimalField(max_digits=10, decimal_places=2)
     order_date = models.DateTimeField(default=timezone.now)
     category = models.CharField(max_length=100)
-    reward_rate = models.FloatField(default=0.00)  # Percentage or multiplier
-    reward_amount = models.FloatField(default=0.00)  # reward = final_amount * rate
+    reward_rate = models.DecimalField(max_digits=2, decimal_places=2)  # Percentage or multiplier
+    reward_amount = models.DecimalField(max_digits=10, decimal_places=2)  # reward = final_amount * rate
 
-    is_active = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=False)    # default rue hona chaiye
     processed = models.BooleanField(default=False)
 
-    skrech_from  =  models.DateTimeField(default=timezone.now)
-    skrech_to =  models.DateTimeField(null= True, blank=True)
+    scratch_status = models.BooleanField(default=False)
+    scratch_from  =  models.DateTimeField(auto_now_add=True)
+    scratch_to =  models.DateTimeField(null= True, blank=True)
 
     valid_from = models.DateTimeField(null=True, blank=True)
     valid_to = models.DateTimeField(null=True, blank=True)
-
-    removed_date = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
 
     def __str__(self):
         return f"Reward #{self.id} - {self.product_name}"
+
