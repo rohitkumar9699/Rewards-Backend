@@ -7,6 +7,10 @@ from .models import RewardWallet, RewardCards
 
 from decimal import Decimal
 
+COIN_EXCHANGE_RATE =  0.2  # Float 
+WALLET_EXCHANGE_RATE = Decimal(0.2)
+
+
 class CreateCardView(APIView):
     def post(self, request):
         data = request.data
@@ -26,7 +30,7 @@ class CreateCardView(APIView):
 
             # 2. Extract and compute fields
             final_amount = float(data['final_amount'])
-            reward_rate = 0.2  # Default 20%
+            reward_rate = COIN_EXCHANGE_RATE
             reward_amount = final_amount * reward_rate
 
             # 3. Compute date fields
@@ -152,6 +156,7 @@ class CardReedomView(APIView):
 
             card.is_active= False
             card.processed= True
+            card.save()
 
             try:
                 old_wallet_balance = wallet.wallet_balance or Decimal("0")
@@ -181,7 +186,7 @@ class ReedomCoinView(APIView):
 
         try:
             wallet = RewardWallet.objects.get(wallet_username=wallet_username)
-            wallet_balance = wallet.wallet_balance * 0.2 #   20%  exchange rate 
+            wallet_balance = wallet.wallet_balance * WALLET_EXCHANGE_RATE 
 
             data = {
                 "wallet_username": wallet_username,
