@@ -35,17 +35,13 @@ class RewardWalletAdmin(admin.ModelAdmin):
 
 @admin.register(RewardCards)
 class RewardCardsAdmin(admin.ModelAdmin):
-    list_display = (
-        'id', 'order_by', 'product_name', 'product_id', 'final_amount',
-        'reward_rate', 'reward_amount', 'is_active', 'processed', 'scratch_status',
-        'created_at'
-    )
+    list_display = [field.name for field in RewardCards._meta.fields]
     list_filter = ('category', 'is_active', 'processed', 'scratch_status', 'created_at')
     search_fields = ('product_name', 'product_id', 'order_by__wallet_username')
     date_hierarchy = 'created_at'
     ordering = ('-created_at',)
 
-    readonly_fields = ('created_at', 'scratch_from')
+    readonly_fields = ('created_at', 'scratch_from', 'scratch_to', 'reward_amount', 'valid_from', 'valid_to')
 
     fieldsets = (
         ('Product Info', {
