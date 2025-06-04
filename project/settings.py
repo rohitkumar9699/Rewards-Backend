@@ -148,4 +148,4 @@ DATABASES = {
 }
 
 
-# AUTH_USER_MODEL = 
+AUTH_USER_MODEL = 'reward.RewardWallet'

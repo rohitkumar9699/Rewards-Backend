@@ -4,7 +4,7 @@ from rest_framework import status
 from django.utils import timezone
 from datetime import timedelta
 from .models import RewardWallet, RewardCards
-
+from rest_framework.permissions import AllowAny
 from decimal import Decimal
 
 COIN_EXCHANGE_RATE =  0.2  # Float 
@@ -12,6 +12,8 @@ WALLET_EXCHANGE_RATE = Decimal(0.2)
 
 
 class CreateCardView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         data = request.data
 
