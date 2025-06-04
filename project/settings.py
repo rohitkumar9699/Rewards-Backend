@@ -20,7 +20,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-iy!oc7f1jc2+yrwhf#@#k0b7!&q&1#rofd&4*k7or#ox8l#$eu'
+# SECRET_KEY = 'django-insecure-iy!oc7f1jc2+yrwhf#@#k0b7!&q&1#rofd&4*k7or#ox8l#$eu'  # this peojext
+SECRET_KEY = 'django-insecure-@ime)z05p$6_7m@u0=5bz2e72h2!8g0(wep3!g^&f0^8pj(m_r' # Coupon Proekct
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -38,6 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'reward',
+    'rest_framework',
+    'rest_framework_simplejwt',
 ]
 
 MIDDLEWARE = [
@@ -116,15 +120,21 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# REST framework settings   
-# REST_FRAMEWORK = {
-#     'DEFAULT_AUTHENTICATION_CLASSES': (
-#         'rest_framework_simplejwt.authentication.JWTAuthentication',
-#     ),
-    
-# }
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
 
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),    # default 5 min, adjust as needed
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7), 
+}
 
 DATABASES = {
     'default': {
