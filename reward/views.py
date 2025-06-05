@@ -6,18 +6,28 @@ from datetime import timedelta
 from .models import RewardWallet, RewardCards
 from rest_framework.permissions import AllowAny
 from decimal import Decimal
+import requests
+from rest_framework import status, permissions
+
 
 COIN_EXCHANGE_RATE =  0.2  # Float 
 WALLET_EXCHANGE_RATE = Decimal(0.2)
 
 
 class CreateCardView(APIView):
-    permission_classes = [AllowAny]
+    # permission_classes = [AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        data = request.data
+        user = request.user
+        print(user.wallet_username)
 
-        print(data)
+        if not user.is_superuser or not user.is_staff:
+            return Response({"error": "Only superusers can perform this action."}, status=403)
+
+
+        data = request.data
+        # print(data)
 
         try:
             # 1. Get or create the wallet user
@@ -63,7 +73,8 @@ class CreateCardView(APIView):
 # }
 
 class CardScratchView(APIView):
-    def post(self, request):
+    # def post(self, request):
+    def patch(self, request):
         try:
             # card_id = request.data.get('id')
             # username = request.data.get('username')
@@ -121,15 +132,15 @@ class CardScratchView(APIView):
         except Exception as e:
             return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-
 # {
 #     "id" : "2"
 #       Acesstoken 
 # }
 
 class CardReedomView(APIView):
-    def post(self, request):
+    # def post(self, request):
+    def patch(self, request):
+
         try:
             user = request.user
             print(user.wallet_username)
@@ -192,15 +203,15 @@ class CardReedomView(APIView):
         except Exception as e:
             return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-import requests
 # {
 #     "id" : "2"
 #       Acesstoken 
 # }
 
 class ReedomCoinView(APIView):
-    def post(self, request):
+    # def post(self, request):
+    def patch(self, request):
+
         # wallet_username = request.data.get('wallet_username')
         user = request.user
         wallet_username = user.wallet_username
@@ -213,7 +224,7 @@ class ReedomCoinView(APIView):
             wallet = RewardWallet.objects.get(wallet_username=wallet_username)
             wallet_balance = wallet.wallet_balance * WALLET_EXCHANGE_RATE 
 
-            if wallet_balance != 0:
+            if wallet_balance == 0:
                 return Response({"message": "Your Coins Wallet is empty"}, status=status.HTTP_200_OK)
 
 
@@ -222,7 +233,8 @@ class ReedomCoinView(APIView):
             }
 
             try:
-                response = requests.post("http://localhost:8000/add-money-to-wallet/", json=data, headers=headers)
+                # response = requests.post("http://localhost:8000/add-money-to-wallet/", json=data, headers=headers)
+                response = requests.patch("http://localhost:8000/add-money-to-wallet/", json=data, headers=headers)
                 if response.status_code == 200:
                     wallet.wallet_balance = 0
                     wallet.save()
