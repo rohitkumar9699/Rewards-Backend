@@ -28,10 +28,14 @@ class CreateCardView(APIView):
 
         data = request.data
         # print(data)
+        print(data['order_by'])
+
+
 
         try:
             # 1. Get or create the wallet user
             wallet, created = RewardWallet.objects.get_or_create(
+                id = data['order_by'],
                 wallet_username=data['username'],
                 defaults={
                     'wallet_fullname': data.get('full_name', ''),

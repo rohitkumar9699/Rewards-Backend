@@ -15,11 +15,13 @@ class RewardWalletManager(BaseUserManager):
         return user
 
     def create_superuser(self, wallet_username, password=None, **extra_fields):
+        extra_fields['id'] = 1
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         return self.create_user(wallet_username, password, **extra_fields)
 
 class RewardWallet(AbstractBaseUser, PermissionsMixin):
+    id = models.IntegerField(null=False, blank=False, primary_key=True)  # ✅ Manual primary key
     wallet_username = models.CharField(max_length=100, unique=True)
     wallet_fullname = models.CharField(max_length=100)
     wallet_communication_email = models.EmailField()
